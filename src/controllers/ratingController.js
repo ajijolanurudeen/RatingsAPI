@@ -1,20 +1,22 @@
 const db = require("../DB/db");
-
 // CREATE RATING
 const createRating = async (req, res) => {
   try {
-    const { product_id, user_id, rating, comment } = req.body;
+    const user_id = req.user.user_id; // Logged-in user ID from JWT
+    const { product_id, rating, comment } = req.body;
 
     // Basic validation
-    if (!product_id || !user_id || !rating)
-      return res
-        .status(400)
-        .json({ message: "product_id, user_id, and rating are required" });
+    if (!product_id || !rating) {
+      return res.status(400).json({
+        message: "product_id and rating are required",
+      });
+    }
 
-    if (rating < 1 || rating > 5)
-      return res
-        .status(400)
-        .json({ message: "Rating must be between 1 and 5" });
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({
+        message: "Rating must be between 1 and 5",
+      });
+    }
 
     // Check if user already rated the item
     const [existing] = await db.query(
@@ -22,10 +24,11 @@ const createRating = async (req, res) => {
       [product_id, user_id]
     );
 
-    if (existing.length > 0)
-      return res
-        .status(400)
-        .json({ message: "User has already rated this item" });
+    if (existing.length > 0) {
+      return res.status(400).json({
+        message: "User has already rated this item",
+      });
+    }
 
     // Insert new rating
     const [insertResult] = await db.query(
@@ -52,7 +55,7 @@ const createRating = async (req, res) => {
 // GET ALL RATINGS
 const getAllRatings = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM rating ORDER BY created_at DESC");
+    const [rows] = await db.query("SELECT * FROM rating ");
     res.status(200).json(rows);
   } catch (error) {
     console.error("Error fetching ratings:", error);

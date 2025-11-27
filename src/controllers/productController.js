@@ -68,12 +68,12 @@ const getAllProducts = async (req, res) => {
 
 const getProductById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { product_id } = req.params;
 
     // 1️⃣ Get the product
     const [productRows] = await db.query(
       'SELECT * FROM product WHERE product_id = ?',
-      [id]
+      [product_id]
     );
     const product = productRows[0];
 
@@ -94,7 +94,7 @@ const getProductById = async (req, res) => {
       JOIN \`user\` u ON r.user_id = u.user_id
       WHERE r.product_id = ?;
       `,
-      [id]
+      [product_id]
     );
 
     // 3️⃣ Compute average rating
@@ -124,14 +124,14 @@ const getProductById = async (req, res) => {
 // UPDATE PRODUCT
 const updateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, description, price } = req.body;
+    const { product_id } = req.params;
+    const { product_name, product_description, product_price } = req.body;
 
     const [result] = await db.query(
       `UPDATE product
        SET product_name = ?, product_description = ?, product_price = ?
        WHERE product_id = ?`,
-      [name, description, price, id]
+      [product_name, product_description, product_price, product_id]
     );
 
     if (result.affectedRows === 0)
@@ -139,7 +139,7 @@ const updateProduct = async (req, res) => {
 
     res.status(200).json({
       message: 'Product updated successfully',
-      data: { id, name, description, price },
+      data: { product_id,product_description,product_name,product_price },
     });
   } catch (error) {
     console.error(error);
@@ -150,9 +150,9 @@ const updateProduct = async (req, res) => {
 // DELETE PRODUCT
 const deleteProduct = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { product_id } = req.params;
 
-    const [result] = await db.query('DELETE FROM product WHERE product_id = ?', [id]);
+    const [result] = await db.query('DELETE FROM product WHERE product_id = ?', [product_id]);
 
     if (result.affectedRows === 0)
       return res.status(404).json({ message: 'Product not found' });
