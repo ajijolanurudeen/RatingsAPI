@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: ratings_api
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+
+      # MySQL ENV
+      DB_HOST: ${PG_HOST}
+      DB_USER: ${PG_USER}
+      DB_PASSWORD: ${PG_PASSWORD}
+      DB_NAME: ${PG_DATABASE}
+      DB_PORT: ${PG_PORT}
+
+      # Redis (if used)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    depends_on:
+      - mysql
+      - redis
+    restart: always
+
+  mysql:
+    image: mysql:8
+    container_name: ratings_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PG_PASSWORD}
+      MYSQL_DATABASE: ${PG_DATABASE}
+    ports:
+      - "5432:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+
+  redis:
+    image: redis:alpine
+    container_name: ratings_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+volumes:
+  mysql_data:
+  redis_data:
