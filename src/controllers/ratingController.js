@@ -1,115 +1,50 @@
-const db = require("../DB/db");
-// CREATE RATING
-const createRating = async (req, res) => {
+const ratingService = require("../service/rating.service");
+
+const createRating = async (req, res, next) => {
   try {
-    const user_id = req.user.user_id; // Logged-in user ID from JWT
-    const { product_id, rating, comment } = req.body;
-
-    // Basic validation
-    if (!product_id || !rating) {
-      return res.status(400).json({
-        message: "product_id and rating are required",
-      });
-    }
-
-    if (rating < 1 || rating > 5) {
-      return res.status(400).json({
-        message: "Rating must be between 1 and 5",
-      });
-    }
-
-    // Check if user already rated the item
-    const [existing] = await db.query(
-      "SELECT * FROM rating WHERE product_id = ? AND user_id = ?",
-      [product_id, user_id]
-    );
-
-    if (existing.length > 0) {
-      return res.status(400).json({
-        message: "User has already rated this item",
-      });
-    }
-
-    // Insert new rating
-    const [insertResult] = await db.query(
-      "INSERT INTO rating (product_id, user_id, rating, comment) VALUES (?, ?, ?, ?)",
-      [product_id, user_id, rating, comment]
-    );
-
-    res.status(201).json({
-      message: "Rating created successfully",
-      data: {
-        rating_id: insertResult.insertId,
-        product_id,
-        user_id,
-        rating,
-        comment,
-      },
+    const rating = await ratingService.createRating({
+      user_id: req.body.user_id, // from auth middleware
+      product_id: req.body.product_id,
+      rating: req.body.rating
     });
-  } catch (error) {
-    console.error("Error creating rating:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(201).json(rating);
+  } catch (err) {
+    next(err);
   }
 };
 
-// GET ALL RATINGS
-const getAllRatings = async (req, res) => {
+const getAllRatings = async (req, res, next) => {
   try {
-    const [rows] = await db.query("SELECT * FROM rating ");
-    res.status(200).json(rows);
-  } catch (error) {
-    console.error("Error fetching ratings:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// GET AVERAGE RATING FOR AN ITEM
-const getItemAverageRating = async (req, res) => {
-  try {
-    const { id: product_id } = req.params;
-
-    const [rows] = await db.query(
-      "SELECT rating FROM rating WHERE product_id = ?",
-      [product_id]
-    );
-
-    if (rows.length === 0)
-      return res.status(200).json({
-        product_id,
-        average_rating: null,
-        message: "No reviews yet",
-      });
-
-    const avg = rows.reduce((sum, r) => sum + r.rating, 0) / rows.length;
-
-    res.status(200).json({
-      product_id,
-      average_rating: Number(avg.toFixed(2)),
-      total_reviews: rows.length,
+    const ratings = await ratingService.getAllRatings({
+      page: Number(req.query.page),
+      limit: Number(req.query.limit)
     });
-  } catch (error) {
-    console.error("Error fetching average rating:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.json(ratings);
+  } catch (err) {
+    next(err);
   }
 };
 
-// DELETE RATING
-const deleteRating = async (req, res) => {
+const getItemAverageRating = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    const [result] = await db.query(
-      "DELETE FROM rating WHERE rating_id = ?",
-      [id]
+    const avg = await ratingService.getItemAverageRating(
+      req.params.product_id
     );
+    res.json(avg);
+  } catch (err) {
+    next(err);
+  }
+};
 
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: "Rating not found" });
-
-    res.status(200).json({ message: "Rating deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting rating:", error);
-    res.status(500).json({ message: error.message });
+const deleteRating = async (req, res, next) => {
+  try {
+    await ratingService.deleteRating({
+      rating_id: req.params.rating_id,
+      user_id: req.user.user_id
+    });
+    res.status(204).send();
+  } catch (err) {
+    next(err);
   }
 };
 
@@ -117,5 +52,5 @@ module.exports = {
   createRating,
   getAllRatings,
   getItemAverageRating,
-  deleteRating,
+  deleteRating
 };

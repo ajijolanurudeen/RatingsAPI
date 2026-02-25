@@ -23,4 +23,7 @@ const authorize = (roles) => {
   };
 };
 
-module.exports = {authMiddleware,authorize}
+module.exports = {
+  authMiddleware,
+  authorize
+}

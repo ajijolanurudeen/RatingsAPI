@@ -1,167 +1,72 @@
 const express = require('express');
-const db = require('../DB/db'); // MySQL connection pool
+const productService = require("../service/product.service")
 
 // CREATE PRODUCT
-const createProduct = async (req, res) => {
+const createProduct = async (req, res,next) => {
   try {
-    const { product_name, product_description, product_price } = req.body;
-
-    if (!product_name || !product_price)
-      return res.status(400).json({ message: 'Name and price are required' });
-
-    const [rows] = await db.query(
-      `INSERT INTO product (product_name, product_description, Product_price)
-       VALUES (?, ?, ?)`,
-      [product_name, product_description, product_price]
-    );
-
-    res.status(201).json({
-      message: 'Product created successfully',
-      data: {
-        id: rows.insertId,
-        product_name: product_name,
-        product_description: product_description,
-        product_price: product_price,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    const product = await productService.createProduct({
+      product_name: req.body.product_name,
+      product_description: req.body.product_description,
+      product_price: req.body.product_price
+    })
+    res.status(201).json(product)
+  } catch (err) {
+    next(err)
   }
 };
 
 // GET ALL PRODUCTS WITH RATINGS SUMMARY
-const getAllProducts = async (req, res) => {
+const getAllProducts = async (req, res,next) => {
   try {
-    const [products] = await db.query(`SELECT * FROM product `);
-
-    const productWithRatings = await Promise.all(
-      products.map(async (product) => {
-        const [ratings] = await db.query(
-          'SELECT rating FROM rating WHERE product_id = ?',
-          [product.product_id]
-        );
-
-        const avg =
-          ratings.length > 0
-            ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
-            : null;
-
-        return {
-          ...product,
-          average_rating: avg ? Number(avg.toFixed(1)) : null,
-          total_reviews: ratings.length,
-          message: ratings.length === 0 ? 'No reviews yet' : null,
-        };
-      })
-    );
-
-    res.status(200).json({
-      message: 'Products fetched successfully',
-      data: productWithRatings,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    const products = await productService.getAllProducts({
+      page: Number(req.query.page),
+      limit: Number(req.query.limit)
+    })
+      res.json(products)
+  } catch (err) {
+    next(err)
   }
 };
 
-const getProductById = async (req, res) => {
+
+// GET ONE PRODUCT
+const getProductById = async (req, res,next) => {
   try {
-    const { product_id } = req.params;
-
-    // 1️⃣ Get the product
-    const [productRows] = await db.query(
-      'SELECT * FROM product WHERE product_id = ?',
-      [product_id]
-    );
-    const product = productRows[0];
-
-    if (!product)
-      return res.status(404).json({ message: 'Product not found' });
-
-    // 2️⃣ Get all reviews for that product
-    const [reviews] = await db.query(
-      `
-      SELECT 
-        r.product_id, 
-        r.rating, 
-        r.comment,
-        u.user_id AS user_id, 
-        u.name AS user_name, 
-        u.email AS user_email
-      FROM rating r
-      JOIN \`user\` u ON r.user_id = u.user_id
-      WHERE r.product_id = ?;
-      `,
-      [product_id]
-    );
-
-    // 3️⃣ Compute average rating
-    const total_reviews = reviews.length;
-    const avg_rating =
-      total_reviews > 0
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / total_reviews
-        : null;
-
-    // 4️⃣ Send response
-    res.status(200).json({
-      message: 'Product fetched successfully',
-      data: {
-        ...product,
-        average_rating: avg_rating ? Number(avg_rating.toFixed(1)) : null,
-        total_reviews,
-        message: total_reviews === 0 ? 'No reviews yet' : null,
-        reviews,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
+    const product = await productService.getProductById(
+      req.params.product_id
+    )
+    res.json(product)
+  } catch (err) {
+    next(err)
+  }  
 };
 
 // UPDATE PRODUCT
-const updateProduct = async (req, res) => {
-  try {
-    const { product_id } = req.params;
-    const { product_name, product_description, product_price } = req.body;
-
-    const [result] = await db.query(
-      `UPDATE product
-       SET product_name = ?, product_description = ?, product_price = ?
-       WHERE product_id = ?`,
-      [product_name, product_description, product_price, product_id]
-    );
-
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: 'Product not found' });
-
-    res.status(200).json({
-      message: 'Product updated successfully',
-      data: { product_id,product_description,product_name,product_price },
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
+const updateProduct = async (req, res,next) => {
+ try {
+  const result =await productService.updateProduct(
+    req.params.product_id,
+    req.body
+  )
+  return res.status(200).json(result)
+ } catch (error) {
+  return res.status(error.status || 500).json({
+    message: error.message || "Intrnal server errorr",
+  })
+ }
 };
 
 // DELETE PRODUCT
 const deleteProduct = async (req, res) => {
-  try {
-    const { product_id } = req.params;
+try {
+  const result = await productService.deleteProduct(req.params.product_id)
 
-    const [result] = await db.query('DELETE FROM product WHERE product_id = ?', [product_id]);
-
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: 'Product not found' });
-
-    res.status(200).json({ message: 'Product deleted successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
+  return res.status(200).json(result);
+} catch (error) {
+  return res.status(error.status || 500).json({
+    message: error.message || "internal server error"
+  })
+}
 };
 
 module.exports = {

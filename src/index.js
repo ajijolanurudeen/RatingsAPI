@@ -9,9 +9,9 @@ const app = express()
 app.use(express.json())
 
 
-app.use('/users',userRoutes)
-app.use("/products",productRoutes)
-app.use("/ratings",ratingRoutes)
+app.use('/api/v1/users',userRoutes)
+app.use("/api/v1/products",productRoutes)
+app.use("/api/v1/ratings",ratingRoutes)
 
 const PORT = process.env.PORT || 5000
 
